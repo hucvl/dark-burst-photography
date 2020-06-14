@@ -64,6 +64,5 @@ def F_loss(vgg_real,vgg_fake):
     p2=compute_error(vgg_real['conv2_2'],vgg_fake['conv2_2'])
     p3=compute_error(vgg_real['conv3_2'],vgg_fake['conv3_2'])
     p4=compute_error(vgg_real['conv4_2'],vgg_fake['conv4_2'])
-    #p5=compute_error(vgg_real['conv5_2'],vgg_fake['conv5_2'])*10
 
     return p0+p1+p2+p3+p4

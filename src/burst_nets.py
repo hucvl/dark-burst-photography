@@ -14,7 +14,6 @@ import utils
 
 ## Coarse module.
 def coarse_net(inputs, dims=32, module_name="original"):
-    feats = []
     nets = inputs
     pool1s, conv1s, conv1 = encode_block(nets, dims,  activation_fn=lrelu, module_name=module_name, block_idx=1)
     pool2s, conv2s, conv2 = encode_block(pool1s, dims*2, activation_fn=lrelu, module_name=module_name, block_idx=2)
@@ -30,21 +29,10 @@ def coarse_net(inputs, dims=32, module_name="original"):
     nets = conv9s
     coarse_outs = inputs + tf.map_fn(lambda x: slim.conv2d(x, 4, [1,1], rate=1, activation_fn=None, scope='g_conv10', reuse=tf.AUTO_REUSE), nets)
  
-    feats.append(conv1s)
-    feats.append(conv2s)
-    feats.append(conv3s)
-    feats.append(conv4s)
-    feats.append(conv5s)
-
-    feats.append(conv6)
-    feats.append(conv7)
-    feats.append(conv8)
-    feats.append(conv9)
-
-    return coarse_outs, feats
+    return coarse_outs
 
 ## Fine module.
-def fine_net(inputs, coarse_outs, feats, dims=32, module_name="fine"):
+def fine_net(inputs, coarse_outs, dims=32, module_name="fine"):
     coarse_outs = tf.map_fn(lambda x: utils.tf_upsample(x), coarse_outs)
     res =  inputs - coarse_outs
     inputs_ = tf.concat([inputs, res, coarse_outs], axis=4)

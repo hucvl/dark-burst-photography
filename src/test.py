@@ -1,4 +1,4 @@
-# evaluate_set.py: Ahmet Serdar Karadeniz
+# test.py
 # description: Evaluation script for the set based model.
 
 from __future__ import division
@@ -20,16 +20,15 @@ n_burst = 1
 input_dir = '../dataset/Sony/short/'
 gt_dir = '../dataset/Sony/long/'
 method = "burst_l1_cx"
-d_id = 2
+d_id = 1 ## 1 for test, 2 for validation
 result_name = "burst_l1_cx"
 d_set = utils.d_set_for_id(d_id)
 checkpoint_dir = '../checkpoint/Sony/%s/'%method
-#method = "set_based_single"
 result_dir = '../results/%s/%s/'%(d_set,result_name)
 if not os.path.isdir(result_dir):
 	os.makedirs(result_dir)
 
-is_burst = True
+is_burst = False
 
 # get test IDs
 test_fns = glob.glob(gt_dir + '/%d*.ARW'%d_id)
@@ -43,12 +42,8 @@ in_image = tf.placeholder(tf.float32, [None, None, None, None, 4])
 in_image_low = tf.placeholder(tf.float32, [None, None, None, None, 4])
 gt_image = tf.placeholder(tf.float32, [None, None, None, 3])
 
-coarse_outs, feats = burst_nets.coarse_net(in_image_low)
-out_image = burst_nets.fine_net(in_image, coarse_outs, feats)
-
-# out_image = nets.sid_unet(in_image[0])
-# out_image = nets.res_unet(in_image[0])
-# out_x2, out_image = burst_nets.coarse_to_fine_net(in_image)
+coarse_outs = burst_nets.coarse_net(in_image_low)
+out_image = burst_nets.fine_net(in_image, coarse_outs)
 
 distance_t = lpips_tf.lpips(gt_image, out_image, model='net-lin', net='alex')
 
@@ -56,10 +51,6 @@ t_vars = tf.trainable_variables()
 saver = tf.train.Saver(t_vars)
 sess.run(tf.global_variables_initializer())
 ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-old_vars = []
-new_vars = []
-for t in t_vars:
-	print(t.name)
 
 
 if ckpt:
@@ -77,18 +68,19 @@ count = 0
 for test_id in test_ids:
 	in_files = glob.glob(input_dir + '%05d_00*.ARW' % test_id)
 	for k in range(len(in_files)):
+		## Read raw images.
 		in_path = in_files[k]
 		in_paths, complete = utils.get_burst_paths(in_path, n_burst=n_burst)
-
 		in_fn = os.path.basename(in_path)
-		print(in_fn)
 		gt_files = glob.glob(gt_dir + '%05d_00*.ARW' % test_id)
 		gt_path = gt_files[0]
 		gt_fn = os.path.basename(gt_path)
 		in_exposure = float(in_fn[9:-5])
 		gt_exposure = float(gt_fn[9:-5])
 		ratio = min(gt_exposure / in_exposure, 300)
+		print(in_fn)
 
+		## Pack and multiply with exp. ratio.
 		inputs = []
 		for in_path in in_paths:
 			raw = rawpy.imread(in_path)
@@ -96,17 +88,16 @@ for test_id in test_ids:
 			input_full = np.expand_dims(input_full,0)
 			input_full = np.minimum(input_full, 1.0)
 			inputs.append(input_full)
-
 		inputs = np.array(inputs)
 		inputs_low = utils.resize_samples(inputs)
-		print(inputs.shape)
 
-
+		## Read gt.
 		gt_raw = rawpy.imread(gt_path)
 		gt_full = gt_raw.postprocess(use_camera_wb=True, half_size=False, no_auto_bright=True, output_bps=16)
 		gt_full = np.expand_dims(np.float32(gt_full / 65535.0), axis=0)
 		gt_full_raw = np.expand_dims(utils.pack_raw(gt_raw), 0)
 		
+		## Run model.
 		st = time.time()
 		if is_burst == True:
 			st = time.time()
@@ -120,7 +111,6 @@ for test_id in test_ids:
 			# output = np.mean(outs, 0, keepdims=True)
 			outs = []
 			for i in range(len(inputs)):
-				print(inputs[i].shape)
 				output = sess.run(out_image, feed_dict={in_image: np.expand_dims(inputs[i], 0), in_image_low: np.expand_dims(inputs_low[i], 0),})
 				output = np.minimum(np.maximum(output, 0), 1)
 				outs.append(output)
@@ -128,17 +118,15 @@ for test_id in test_ids:
 			output = np.mean(outs, 0)
 		time_ = time.time() - st
 		
+		## Compute lpips
 		lpips_val = sess.run([distance_t], feed_dict={out_image: output, gt_image: gt_full})
-		tf.reset_default_graph()
-
 		lpips_val = lpips_val[0][0]
 		output = np.minimum(np.maximum(output, 0), 1)
 		output = output[0, :,  :, :]
 		gt_full = gt_full[0, :, :, :]	
-		output = output[0]
 		print(output.shape, gt_full.shape)
 			
-
+		## Compute psnr, ssim
 		if test_id not in misaligned:
 			ssim_val = compare_ssim(output, gt_full, multichannel=True)
 			psnr_val = compare_psnr(output, gt_full)
@@ -159,16 +147,12 @@ for test_id in test_ids:
 		## Save results to an array.
 		quant_results = np.array(ssim_list, dtype=np.float32)
 		quant_results = np.expand_dims(quant_results, 0)
-		print(quant_results.shape, np.expand_dims(np.array(psnr_list, dtype=np.float32),0).shape)
-		print(quant_results.shape, np.expand_dims(np.array(lpips_list, dtype=np.float32),0).shape)
-		print(quant_results.shape, np.expand_dims(np.array(ratio_list, dtype=np.float32),0).shape)
-		print(quant_results.shape, np.expand_dims(np.array(time_list, dtype=np.float32),0).shape)
 		quant_results = np.concatenate([quant_results, np.expand_dims(np.array(psnr_list, dtype=np.float32), 0)], 0)
 		quant_results = np.concatenate([quant_results, np.expand_dims(np.array(lpips_list, dtype=np.float32), 0)], 0)
 		quant_results = np.concatenate([quant_results, np.expand_dims(np.array(ratio_list, dtype=np.float32), 0)], 0)
 		quant_results = np.concatenate([quant_results, np.expand_dims(np.array(time_list, dtype=np.float32), 0)], 0)
+		np.save(result_dir+"results.npy", quant_results)
 
 		## Save output images.
-		np.save(result_dir+"results.npy", quant_results)
 		temp = cv2.cvtColor(np.uint8(output*255), cv2.COLOR_RGB2BGR)
-		cv2.imwrite(result_dir+"%05d_00_%d_single.jpg"%(test_id, ratio), temp)
+		cv2.imwrite(result_dir+"%05d_00_%d_out.jpg"%(test_id, ratio), temp)

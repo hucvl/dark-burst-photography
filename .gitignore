@@ -1,2 +1,8 @@
 *.pyc
 *.DS_STORE
+checkpoint/Sony/
+checkpoint/Sony/
+dataset/Sony/
+src/VGG_Model/*
+src/lpips-tensorflow/
+src/venv/

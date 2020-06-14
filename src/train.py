@@ -1,4 +1,4 @@
-# train_set.py
+# train.py
 # description: Training script for Burst Photography for Learning to Enhance Extremely Dark Images.
 
 ## Train coarse network with ps=256, 4000 epochs
@@ -6,7 +6,7 @@
 ## Train set-based fine network with ps_fine=512, ps_denoise=256, 1000 epochs with fixed coarse params, lr=1e-4 -> 1e-5 after 2000 epochs.
 
 from __future__ import division
-import os, time, scipy.io
+import os, time
 import tensorflow as tf
 import numpy as np
 import rawpy
@@ -14,7 +14,6 @@ import glob
 import utils
 import burst_nets
 import cv2
-import lpips_tf
 from vgg import *
 from CX.CX_helper import *
 from CX.config import *
@@ -29,11 +28,12 @@ train_ids = [int(os.path.basename(train_fn)[0:5]) for train_fn in train_fns]
 
 save_freq = 50
 train_coarse = False
-fix_coarse_weights = True ## fixes the weights of coarse network.
-finetune = False ## all weights are already initialized if True.
+fix_coarse_weights = False ## fixes the weights of coarse network.
+finetune = True ## all weights are already initialized from ckpt if True.
 
 sess = tf.Session()
 n_burst = 1
+max_burst = n_burst
 ps = 512
 ps_low = int(ps/2)
 
@@ -44,7 +44,7 @@ if train_coarse == True:
 	in_image = tf.placeholder(tf.float32, [None, 1, ps_low, ps_low, 4])
 	in_image_low = tf.placeholder(tf.float32, [None, 1, ps_low//2, ps_low//2, 4])
 	gt_image_low = tf.placeholder(tf.float32, [1, ps_low, ps_low, 4])
-	coarse_outs, feats = burst_nets.coarse_net(in_image_low)
+	coarse_outs = burst_nets.coarse_net(in_image)
 	out_image = coarse_outs[0]
 	G_loss_raw = tf.map_fn(lambda x: tf.reduce_mean(tf.abs(gt_image_low - x)), coarse_outs)
 	G_loss_raw = tf.reduce_mean(G_loss_raw)
@@ -55,8 +55,8 @@ else:
 	in_image_low = tf.placeholder(tf.float32, [None, 1, ps_low, ps_low, 4])
 	gt_image = tf.placeholder(tf.float32, [1, ps*2, ps*2, 3])
 	gt_image_low = tf.placeholder(tf.float32, [None, ps_low, ps_low, 4])
-	coarse_outs, feats = burst_nets.coarse_net(in_image_low)
-	out_image = burst_nets.fine_res_net(in_image, coarse_outs, feats)
+	coarse_outs = burst_nets.coarse_net(in_image_low)
+	out_image = burst_nets.fine_net(in_image, coarse_outs)
 	
 	G_l1 = tf.reduce_mean(tf.abs(gt_image - out_image))
 	G_pix = G_l1
@@ -156,7 +156,6 @@ def load_input_output(idx, nb, ps=512):
 	in_fn = os.path.basename(in_path)
 	
 	## file paths for the burst and exposure ratio.
-	max_burst = n_burst
 	in_paths, complete = utils.get_burst_paths(in_path, max_burst)
 	gt_files = glob.glob(gt_dir + '%05d_00*.ARW' % train_id)
 	gt_path = gt_files[0]
@@ -218,7 +217,7 @@ def load_input_output(idx, nb, ps=512):
 learning_rate = 1e-4
 print("Starting training..")
 start_epoch = 0
-num_epochs = 4001
+num_epochs = 1
 m = learning_rate/num_epochs
 
 ## Training.
@@ -239,7 +238,7 @@ for epoch in range(start_epoch, num_epochs):
 		
 		if train_coarse == True:
 			input_patches, input_patches_low, gt_patch, gt_patch_raw, complete = load_input_output(idx,r,ps=ps_low)
-			_, G_current_raw, output = sess.run([G_opt, G_loss_raw, out_image], feed_dict={in_image_low: input_patches_low, gt_image_low: gt_patch_raw, lr: learning_rate})
+			_, G_current_raw, output = sess.run([G_opt, G_loss_raw, out_image], feed_dict={in_image: input_patches, gt_image_low: gt_patch_raw, lr: learning_rate})
 			output = np.minimum(np.maximum(output, 0), 1)
 			g_loss_raw[idx] = G_current_raw
 			print("%d %d  RAW Loss=%.4f Time=%.4f" % (epoch, cnt, np.mean(g_loss_raw[np.where(g_loss_raw)]), time.time() - st))
