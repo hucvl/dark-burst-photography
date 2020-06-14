@@ -51,7 +51,7 @@ Required python libraries: tensorflow (>=1.1), rawpy, opencv, numpy, scikit-imag
     n_burst = 10
     ```
 
-3. Train the model
+2. Train the model
     ```
     python3 train.py
     ```
