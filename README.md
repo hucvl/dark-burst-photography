@@ -9,9 +9,9 @@ This is a Tensorflow implementation of Burst Photography for Learning to See in 
 
 [Dataset](https://github.com/cchen156/Learning-to-See-in-the-Dark)
 
-## Setup
+## Getting Started
 
-### Requirement
+### Dependencies
 
 Required python libraries: tensorflow (>=1.1), rawpy, opencv, numpy, scikit-image, scipy, lpips_tf, easydict
 
@@ -24,37 +24,37 @@ Required python libraries: tensorflow (>=1.1), rawpy, opencv, numpy, scikit-imag
 
 ### Training
 
-For the perceptual and contextual losses, download the pre-trained VGG-19 model:
-```
-python3 download_vgg_models.py
-```
+1. For the perceptual and contextual losses, download the pre-trained VGG-19 model:
+    ```
+    python3 download_vgg_models.py
+    ```
 
-For multiscale training, set the following variables inside train.py
+2. For multiscale training, set the following variables inside train.py:
 
 
-Coarse network:
-```
-train_coarse = True
-finetune = False
-```
+    **Coarse network**
+    ```python
+    train_coarse = True
+    finetune = False
+    ```
 
-Fine network:
-```
-train_coarse = False
-finetune = False
-```
+    **Fine network**
+    ```python
+    train_coarse = False
+    finetune = False
+    ```
 
-Set-based burst network:
-```
-train_coarse = False
-finetune = True
-n_burst = 10
-```
+    **Set-based burst network**
+    ```python
+    train_coarse = False
+    finetune = True
+    n_burst = 10
+    ```
 
-Run
-```
-python3 train.py
-```
+3. Train the model
+    ```
+    python3 train.py
+    ```
 
 ## Citation
 If you use this code for your research, please consider citing our paper: 
