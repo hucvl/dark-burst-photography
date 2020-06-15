@@ -1,6 +1,6 @@
 # Burst Photography for Learning to Enhance Extremely Dark Images
 
-This is a Tensorflow implementation of Burst Photography for Learning to See in the Dark, by [Ahmet Serdar Karadeniz](https://askaradeniz.github.io), [Erkut Erdem](https://web.cs.hacettepe.edu.tr/~erkut/), [Aykut Erdem](https://web.cs.hacettepe.edu.tr/~aykut/).
+This is a Tensorflow implementation of Burst Photography for Learning to Enhance Extremely Dark Images, by [Ahmet Serdar Karadeniz](https://askaradeniz.github.io), [Erkut Erdem](https://web.cs.hacettepe.edu.tr/~erkut/), [Aykut Erdem](https://web.cs.hacettepe.edu.tr/~aykut/).
 
 
 [Project Website](https://hucvl.github.io/dark-burst-photography)
