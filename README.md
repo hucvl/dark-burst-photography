@@ -5,7 +5,7 @@ This is a Tensorflow implementation of Burst Photography for Learning to Enhance
 
 [Project Website](https://hucvl.github.io/dark-burst-photography)
 
-[Paper](#)
+[Paper](https://arxiv.org/pdf/2006.09845.pdf)
 
 [Dataset](https://github.com/cchen156/Learning-to-See-in-the-Dark)
 
