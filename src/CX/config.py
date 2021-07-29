@@ -54,6 +54,7 @@ config.CX.crop_quarters = False
 config.CX.max_sampling_1d_size = 65
 # config.dis.feat_layers = {'conv1_1': 1.0,'conv2_1': 1.0, 'conv3_1': 1.0, 'conv4_1': 1.0,'conv5_1': 1.0}
 config.CX.feat_layers = {'conv3_2': 1.0, 'conv4_2': 1.0}
+#config.CX.feat_layers = {'conv1_2': 1.0, 'conv2_2': 1.0, 'conv3_2': 1.0, 'conv4_2': 1.0}
 config.CX.feat_content_layers = {'conv4_2': 1.0}  # for single image
 config.CX.Dist = Distance.DotProduct
 config.CX.nn_stretch_sigma = 0.5#0.1

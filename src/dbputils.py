@@ -57,7 +57,19 @@ def augment_samples(input_images, gt_image, gt_image_raw):
 
     return np.array(new_images), gt_image, gt_image_raw
 
-def crop_samples(input_images, gt_image, gt_image_raw, ps=512):
+def shift_samples(input_images, max_err=4):
+    shifted_images = [input_images[0]]
+    for i in range(1,len(input_images)):
+        img = input_images[i][0,:,:,:]
+        error_x = np.random.randint(0, max_err)
+        error_y = np.random.randint(0, max_err)
+        shifted = np.pad(img, ((max_err//2, max_err//2), (max_err//2,max_err//2), (0, 0)), mode='reflect')
+        shifted = shifted[error_y:shifted.shape[0]-(max_err-error_y), error_x:shifted.shape[1]-(max_err-error_x), :]
+        shifted_images.append(np.expand_dims(shifted, 0))
+        
+    return np.array(shifted_images)
+
+def crop_samples(input_images, gt_image, gt_image_raw, ps=512, raw_ratio=2):
     in_image = input_images[0]
     H = in_image.shape[1]
     W = in_image.shape[2]
@@ -69,7 +81,7 @@ def crop_samples(input_images, gt_image, gt_image_raw, ps=512):
         input_patch = input_full[:,yy:yy + ps, xx:xx + ps, :]
         input_patches.append(input_patch)
 
-    gt_patch = gt_image[:, yy*2:yy*2 +ps*2, xx*2:xx*2 +ps*2, :]
+    gt_patch = gt_image[:, yy*raw_ratio:yy*raw_ratio +ps*raw_ratio, xx*raw_ratio:xx*raw_ratio +ps*raw_ratio, :]
     gt_raw_patch = gt_image_raw[:, yy:yy + ps, xx:xx + ps, :]
     return np.array(input_patches), gt_patch, gt_raw_patch
 
@@ -96,29 +108,29 @@ def resize_samples(input_images, r=2):
     input_images_low = []
     for i in range(len(input_images)):
         img = input_images[i]
-        #print(img.shape)
         img = np.expand_dims(resize(img[0,:,:,:], r=r), 0)
         input_images_low.append(img)
     return np.array(input_images_low)
 
 
-def pack_raw(raw, black_level=512):
+def pack_raw(raw, black_level=512, maxpix=16383):
     # pack Bayer image to 4 channels
     im = raw.raw_image_visible.astype(np.float32)
-    im = np.maximum(im - black_level, 0) / (16383 - black_level)  # subtract the black level
+    im = np.maximum(im - black_level, 0) / (maxpix - black_level)  # subtract the black level
 
     im = np.expand_dims(im, axis=2)
     img_shape = im.shape
     H = img_shape[0]
     W = img_shape[1]
 
-    out = np.concatenate((im[0:H:2, 0:W:2, :],
-                          im[0:H:2, 1:W:2, :],
-                          im[1:H:2, 1:W:2, :],
-                          im[1:H:2, 0:W:2, :]), axis=2)
+    r = im[0:H:2, 0:W:2, :]
+    g1 = im[0:H:2, 1:W:2, :]
+    g2 = im[1:H:2, 1:W:2, :]
+    b = im[1:H:2, 0:W:2, :]
+
+    out = np.concatenate((r, g1, g2, b), axis=2)
     
     return out
-
 
 def unpack_raw(raw, packed):
     im = raw.raw_image_visible.astype(np.float32)
@@ -127,12 +139,60 @@ def unpack_raw(raw, packed):
     W = img_shape[1]
 
     out = im
-    out[0:H:2, 0:W:2] =  packed[:,:,0]
+    out[0:H:2, 0:W:2] = packed[:,:, 0]
     out[0:H:2, 1:W:2] = packed[:, :, 1]
     out[1:H:2, 1:W:2] = packed[:, :, 2]
     out[1:H:2, 0:W:2] = packed[:, :, 3]
     
     out = np.minimum(out*(16383-512) + 512, 16383)
+    return out
+
+def pack_fuji_raw(raw):
+    # pack X-Trans image to 9 channels
+    im = raw.raw_image_visible.astype(np.float32)
+    im = np.maximum(im - 1024, 0) / (16383 - 1024)  # subtract the black level
+
+    img_shape = im.shape
+    H = (img_shape[0] // 6) * 6
+    W = (img_shape[1] // 6) * 6
+    #print("Packed img of shape: ", img_shape, "to: ",H,W)
+
+    out = np.zeros((H // 3, W // 3, 9))
+
+    # 0 R
+    out[0::2, 0::2, 0] = im[0:H:6, 0:W:6]
+    out[0::2, 1::2, 0] = im[0:H:6, 4:W:6]
+    out[1::2, 0::2, 0] = im[3:H:6, 1:W:6]
+    out[1::2, 1::2, 0] = im[3:H:6, 3:W:6]
+
+    # 1 G
+    out[0::2, 0::2, 1] = im[0:H:6, 2:W:6]
+    out[0::2, 1::2, 1] = im[0:H:6, 5:W:6]
+    out[1::2, 0::2, 1] = im[3:H:6, 2:W:6]
+    out[1::2, 1::2, 1] = im[3:H:6, 5:W:6]
+
+    # 1 B
+    out[0::2, 0::2, 2] = im[0:H:6, 1:W:6]
+    out[0::2, 1::2, 2] = im[0:H:6, 3:W:6]
+    out[1::2, 0::2, 2] = im[3:H:6, 0:W:6]
+    out[1::2, 1::2, 2] = im[3:H:6, 4:W:6]
+
+    # 4 R
+    out[0::2, 0::2, 3] = im[1:H:6, 2:W:6]
+    out[0::2, 1::2, 3] = im[2:H:6, 5:W:6]
+    out[1::2, 0::2, 3] = im[5:H:6, 2:W:6]
+    out[1::2, 1::2, 3] = im[4:H:6, 5:W:6]
+
+    # 5 B
+    out[0::2, 0::2, 4] = im[2:H:6, 2:W:6]
+    out[0::2, 1::2, 4] = im[1:H:6, 5:W:6]
+    out[1::2, 0::2, 4] = im[4:H:6, 2:W:6]
+    out[1::2, 1::2, 4] = im[5:H:6, 5:W:6]
+
+    out[:, :, 5] = im[1:H:3, 0:W:3]
+    out[:, :, 6] = im[1:H:3, 1:W:3]
+    out[:, :, 7] = im[2:H:3, 0:W:3]
+    out[:, :, 8] = im[2:H:3, 1:W:3]
     return out
 
 def to_rawrgb(bayer_arr):

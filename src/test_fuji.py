@@ -13,38 +13,37 @@ from skimage.measure import compare_ssim, compare_psnr
 import dbputils
 import cv2
 import lpips_tf
-from tensorflow.contrib.layers import layer_norm, instance_norm
 
 
-n_burst = 8
-input_dir = '../dataset/Sony/short/'
-gt_dir = '../dataset/Sony/long/'
-method = "burst_l1_res_se_motion_cx"
+
+n_burst = 1
+input_dir = '../dataset/Fuji/short/'
+gt_dir = '../dataset/Fuji/long/'
+method = "burst_fuji"
 d_id = 1 ## 1 for test, 2 for validation
-result_name = "burst_l1_res_se_motion_cx"
+result_name = "burst_fuji"
 d_set = dbputils.d_set_for_id(d_id)
-checkpoint_dir = '../checkpoint/Sony/%s/'%method
-result_dir = '../results/%s/%s_%d/'%(d_set,result_name, n_burst)
-gt_result_dir = '../results/%s/ground_truth/'%(d_set)
+checkpoint_dir = '../checkpoint/Fuji/%s/'%method
+result_dir = '../results/Fuji/%s/%s_%d/'%(d_set,result_name, n_burst)
 if not os.path.isdir(result_dir):
 	os.makedirs(result_dir)
 
 is_burst = True
 
 # get test IDs
-test_fns = glob.glob(gt_dir + '/%d*.ARW'%d_id)
+test_fns = glob.glob(gt_dir + '/%d*.RAF'%d_id)
 test_ids = [int(os.path.basename(test_fn)[0:5]) for test_fn in test_fns]
 
 misaligned = [10034, 10045, 10172]
 
 sess = tf.Session()
-in_image = tf.placeholder(tf.float32, [None, None, None, None, 4])
-in_image_low = tf.placeholder(tf.float32, [None, None, None, None, 4])
+in_image = tf.placeholder(tf.float32, [None, None, None, None, 9])
+in_image_low = tf.placeholder(tf.float32, [None, None, None, None, 9])
 gt_image = tf.placeholder(tf.float32, [None, None, None, 3])
 
-coarse_outs = burst_nets.coarse_net(in_image_low)
-out_image = burst_nets.fine_res_net(in_image, coarse_outs, use_center=False, use_noise_map=True)
-
+coarse_outs = burst_nets.coarse_net(in_image_low,out_channels=9)
+#out_image = burst_nets.fine_net(in_image, coarse_outs,out_channels=27)
+out_image = burst_nets.fine_res_net(in_image, coarse_outs, out_channels=27)
 distance_t = lpips_tf.lpips(gt_image, out_image, model='net-lin', net='alex')
 
 t_vars = tf.trainable_variables()
@@ -64,15 +63,15 @@ lpips_list = []
 time_list = []
 ratio_list = []
 count = 0
-
+	
 for test_id in test_ids:
-	in_files = glob.glob(input_dir + '%05d_00*.ARW' % test_id)
+	in_files = glob.glob(input_dir + '%05d_00*.RAF' % test_id)
 	for k in range(len(in_files)):
 		## Read raw images.
 		in_path = in_files[k]
 		in_paths, complete = dbputils.get_burst_paths(in_path, n_burst=n_burst)
 		in_fn = os.path.basename(in_path)
-		gt_files = glob.glob(gt_dir + '%05d_00*.ARW' % test_id)
+		gt_files = glob.glob(gt_dir + '%05d_00*.RAF' % test_id)
 		gt_path = gt_files[0]
 		gt_fn = os.path.basename(gt_path)
 		in_exposure = float(in_fn[9:-5])
@@ -84,44 +83,48 @@ for test_id in test_ids:
 		inputs = []
 		for in_path in in_paths:
 			raw = rawpy.imread(in_path)
-			input_full = dbputils.pack_raw(raw) * ratio
+			input_full = dbputils.pack_fuji_raw(raw) * ratio
 			input_full = np.expand_dims(input_full,0)
 			input_full = np.minimum(input_full, 1.0)
-			inputs.append(input_full)
+			padded = np.zeros((input_full.shape[0],input_full.shape[1], input_full.shape[2]+38, input_full.shape[3]), input_full.dtype)
+			padded[:,:,:input_full.shape[2],:] = input_full
+			padded[:,:,padded.shape[2]-38:,:] = input_full[:,:,-38:,:]
+			inputs.append(padded)
 		inputs = np.array(inputs)
-		inputs_low = dbputils.resize_samples(inputs)
+		inputs_low = dbputils.resize_samples(inputs, r=2)
 
 		## Read gt.
 		gt_raw = rawpy.imread(gt_path)
 		gt_full = gt_raw.postprocess(use_camera_wb=True, half_size=False, no_auto_bright=True, output_bps=16)
 		gt_full = np.expand_dims(np.float32(gt_full / 65535.0), axis=0)
-		gt_full_raw = np.expand_dims(dbputils.pack_raw(gt_raw), 0)
+		gt_full_raw = np.expand_dims(dbputils.pack_fuji_raw(gt_raw), 0)
 		
+		print(inputs.shape, gt_full.shape)
+
 		## Run model.
 		st = time.time()
 		if is_burst == True:
 			st = time.time()
 			output = sess.run(out_image, feed_dict={in_image: inputs, in_image_low: inputs_low,  gt_image: gt_full})
-
 		else:
 			outs = []
 			for i in range(len(inputs)):
-				output = sess.run(out_image, feed_dict={in_image: np.expand_dims(inputs[i], 0), in_image_low: np.expand_dims(inputs_low[i], 0),})
+				output = sess.run(out_image, feed_dict={in_image: np.expand_dims(inputs[i], 0), in_image_low: np.expand_dims(inputs_low[i], 0)})
 				output = np.minimum(np.maximum(output, 0), 1)
 				outs.append(output)
 			outs = np.array(outs)
 			output = np.mean(outs, 0)
 		time_ = time.time() - st
 		
-
-
 		## Compute lpips
+		output = output[:,:,:gt_full.shape[-2],:]
 		lpips_val = sess.run([distance_t], feed_dict={out_image: output, gt_image: gt_full})
 		lpips_val = lpips_val[0][0]
 		output = np.minimum(np.maximum(output, 0), 1)
 		output = output[0, :,  :, :]
 		gt_full = gt_full[0, :, :, :]
-
+		print(output.shape, gt_full.shape)
+			
 		## Compute psnr, ssim
 		if test_id not in misaligned:
 			ssim_val = compare_ssim(output, gt_full, multichannel=True)
@@ -138,7 +141,6 @@ for test_id in test_ids:
 			avg_lpips = np.mean(lpips_list)
 			avg_time = np.mean(time_list[1:])
 
-			#print("ssim: %.4f, psnr: %.4f, lpips: %.4f, Time elapsed: %.3f, %d, %d" % (ssim_val, psnr_val, lpips_val, time_, ratio, count))
 			print("Avg ssim: %.4f, Avg psnr: %.4f, Avg lpips: %.4f, Time elapsed: %.3f, %d" % (avg_ssim, avg_psnr, avg_lpips, time_, count))
 			
 		## Save results to an array.
@@ -153,7 +155,3 @@ for test_id in test_ids:
 		## Save output images.
 		temp = cv2.cvtColor(np.uint8(output*255), cv2.COLOR_RGB2BGR)
 		cv2.imwrite(result_dir+"%05d_00_%d_out.jpg"%(test_id, ratio), temp)
-
-		# print(result_dir+"%05d_00_%d_gt.jpg"%(test_id, ratio))
-		temp = cv2.cvtColor(np.uint8(gt_full*255), cv2.COLOR_RGB2BGR)
-		cv2.imwrite(gt_result_dir+"%05d_00_%d_out.jpg"%(test_id, ratio), temp)

@@ -1,0 +1,48 @@
+# Sony checkpoints
+
+### burst_l1_res_se_motion_cx
+Our final model.
+
+### original
+SID pretrained model.
+
+### zamir
+Zamir et al.
+
+### rcnn
+Ma et al.
+
+### burst_l1
+Single image fine network without se and res, trained with L1 only.
+
+### burst_l1_res
+Single image fine network without se, trained with L1 only.
+
+### burst_l1_res_se
+Single image fine network trained with L1 only.
+
+### burst_l1_res_se_motion_cx
+Burst model trained with L1+CX.
+
+### burst_l1_res_se_motion
+Burst model trained with L1
+
+### burst_l1_res_se_motion_per
+Burst model trained with L1+Per.
+
+
+# Fuji checkpoints
+### burst_fuji
+Our burst model
+
+### fine_fuji
+Our fine model trained with L1 only.
+
+### coarse_fuji
+Coarse fuji model.
+
+### sid
+SID pretrained fuji model.
+
+## rcnn
+Ma et al. fuji.
