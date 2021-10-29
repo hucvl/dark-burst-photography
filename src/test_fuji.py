@@ -16,7 +16,7 @@ import lpips_tf
 
 
 
-n_burst = 1
+n_burst = 8
 input_dir = '../dataset/Fuji/short/'
 gt_dir = '../dataset/Fuji/long/'
 method = "burst_fuji"

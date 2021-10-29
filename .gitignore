@@ -3,8 +3,6 @@
 checkpoint/Sony/
 checkpoint/Fuji/
 checkpoint/DRV/
-dataset/Sony/
-dataset/Fuji/
 dataset/DRV/
 dataset/*.zip
 src/VGG_Model/*

@@ -1,0 +1,9 @@
+tensorflow==1.8.0
+rawpy==0.16.0
+opencv-python==4.5.1.48
+scikit-image==0.17.2
+easydict==1.9.0
+
+## For the video model
+torch==1.9.0
+torchvision==0.10.0
