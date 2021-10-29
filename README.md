@@ -13,16 +13,29 @@ This is a Tensorflow implementation of Burst Photography for Learning to Enhance
 
 ### Dependencies
 
-Required python libraries: tensorflow (>=1.1), rawpy, opencv, numpy, scikit-image, scipy, lpips_tf, easydict
+Prepare the environment (optional).
+```
+conda create -n dark-burst-photography python=3.6
+conda activate dark-burst-photography
+``` 
 
-For the video model, dependencies of [RAFT](https://github.com/princeton-vl/RAFT)
+
+Clone this repository and install the required libraries.
+```
+git clone https://github.com/hucvl/dark-burst-photography
+cd src
+pip install -r requirements.txt
+
+git clone https://github.com/alexlee-gk/lpips-tensorflow
+cd lpips-tensorflow
+python setup.py install
+```
 
 ### Testing
 
-1. Clone this repository.
-2. Download the [pretrained models](https://drive.google.com/file/d/1-8VdqvM3K6K2c7LjeNnbiyecWcpdLfIF/view?usp=sharing) and put them to the folder scheckpoint/Sony/burst_l1_cx and checkpoint/Fuji/burst_fuji.
-3. Download the [SID dataset](https://github.com/cchen156/Learning-to-See-in-the-Dark).
-4. Run `python test.py`
+1. Download the [pretrained models](https://drive.google.com/file/d/1-8VdqvM3K6K2c7LjeNnbiyecWcpdLfIF/view?usp=sharing) and put them to the folders `checkpoint/Sony/burst_l1_res_se_motion_cx` and `checkpoint/Fuji/burst_fuji`.
+2. Download the [SID dataset](https://github.com/cchen156/Learning-to-See-in-the-Dark) or just use the sample images in this repository.
+3. Run `python test.py`
 
 ### Training
 
@@ -60,10 +73,13 @@ For the video model, dependencies of [RAFT](https://github.com/princeton-vl/RAFT
 
 ### Training/testing Video Model
 
-1. Clone this repository.
-2. Download the [pretrained model](https://drive.google.com/file/d/1-74CghpfYES7QhYXn1N-DhL4TF0U44Oe/view?usp=sharing) and put it to the folder src/seeing-motion/checkpoints/burst_l1_drv_full.
-3. Download the [DRV dataset](https://github.com/cchen156/Seeing-Motion-in-the-Dark).
-4. Run `python test_image_dbp.py` (static videos) or `python test_video_dbp.py` (dynamic videos) for testing and `python train_dbp.py` for training.
+1. Download the [pretrained model](https://drive.google.com/file/d/1-74CghpfYES7QhYXn1N-DhL4TF0U44Oe/view?usp=sharing) and put it to the folder src/seeing-motion/checkpoints/burst_l1_drv_full.
+2. Download the [DRV dataset](https://github.com/cchen156/Seeing-Motion-in-the-Dark).
+3. Run `python test_image_dbp.py` (static videos) or `python test_video_dbp.py` (dynamic videos) for testing and `python train_dbp.py` for training.
+
+## License
+MIT License.
+
 
 ## Citation
 If you use this code for your research, please consider citing our paper: 
