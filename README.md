@@ -85,13 +85,11 @@ MIT License.
 If you use this code for your research, please consider citing our paper: 
 ```
 @ARTICLE{dark-burst-photography,
-    author={Ahmet Serdar Karadeniz and Erkut Erdem and Aykut Erdem},
-    journal={submitted},
-    title={Burst Photography for Learning to Enhance Extremely Dark Images},
-    year={2020},
-    volume={},
-    number={},
-    pages={1-13},
-    month={}
+author={Ahmet Serdar Karadeniz and Erkut Erdem and Aykut Erdem},
+journal={IEEE Transactions on Image Processing},
+title={Burst Photography for Learning to Enhance Extremely Dark Images},
+year={2021},
+volume={30},
+pages={9372-9385}
 }
 ```
