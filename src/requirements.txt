@@ -1,4 +1,4 @@
-tensorflow==1.15
+tensorflow==2.5.2
 rawpy==0.16.0
 opencv-python==4.5.1.48
 scikit-image==0.17.2
